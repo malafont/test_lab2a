@@ -1,0 +1,47 @@
+# Silicon Labs Project Configuration Tools: slcp, v0, Component selection file.
+project_name: test_lab2a
+label: test_lab2a
+description: "This example project uses the I/O Stream service running in a bare-metal\
+  \ configuration  to demonstrate the use of UART communication over the virtual COM\
+  \ port (VCOM). The  application will echo back any characters it receives over the\
+  \ serial connection. The  VCOM serial port can be used either over USB or by connecting\
+  \ to port 4902 if the kit  is connected via Ethernet. \n"
+category: Example|Platform
+package: platform
+quality: production
+source:
+- {path: app.c}
+- {path: main.c}
+- {path: app_iostream_usart.c}
+include:
+- path: ''
+  file_list:
+  - {path: app.h}
+  - {path: app_iostream_usart.h}
+sdk: {id: gecko_sdk, version: 3.2.3}
+toolchain_settings: []
+component:
+- {id: brd4181c}
+- {id: psa_crypto_cmac}
+- {id: sl_system}
+- {id: iostream_retarget_stdio}
+- {id: brd4001a}
+- {id: psa_crypto_sha1}
+- {id: psa_crypto_sha256}
+- {id: psa_crypto_aes}
+- instance: [vcom]
+  id: iostream_usart
+- {id: psa_crypto_sha384}
+- {id: psa_crypto_sha224}
+- {id: device_init}
+- {id: psa_crypto_sha512}
+- {id: psa_crypto_ccm}
+- {id: psa_crypto}
+- {id: EFR32MG21B010F1024IM32}
+- {id: psa_crypto_hmac}
+define:
+- {name: DEBUG_EFM}
+configuration:
+- {name: SL_BOARD_ENABLE_VCOM, value: '1'}
+ui_hints: {}
+
