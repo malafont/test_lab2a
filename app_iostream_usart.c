@@ -89,16 +89,12 @@ void app_iostream_usart_process_action(void)
   int8_t c = 0;
   static uint8_t index = 0;
   static bool print_welcome = true;
-  psa_status_t ret;
-  psa_key_id_t key_id;
-  static uint8_t hash_key[32];
-  static size_t hash_key_size;
-  static uint8_t mac[32];
-  static size_t mac_size;
+
 
   if (print_welcome) {
     printf("> ");
     print_welcome = false;
+    psa_crypto_init();
 
   }
 
@@ -107,60 +103,10 @@ void app_iostream_usart_process_action(void)
   if (c > 0) {
     if (c == '\r' || c == '\n') {
       buffer[index] = '\0';
-
-      //Initialise cmac key.
-      printf("\r\nTesting the CMAC operation:\r\n");
-      ret= create_cmac_hash_key(&key_id, hash_key, sizeof(hash_key), &hash_key_size);
-      if (ret == PSA_SUCCESS){
-      // Sign message.
-          ret = cmac_sign_message((uint8_t*)buffer, (size_t)index, key_id, mac, sizeof(mac), &mac_size);
-
-      }
-
-      if(ret == PSA_SUCCESS){
-
-      // Verify the message
-          ret = message_cmac_authenticate(key_id, buffer, index, mac, mac_size);
-      }
-      if(ret == PSA_SUCCESS)
-        printf("\r\n\nVerification successful\n\n");
-      else
-        printf("\r\n\nVerification failed #%ld\n\n", ret);
-
-
-      if(ret == PSA_SUCCESS)
-        printf("\r\nYou wrote: %s\r\n> ", buffer);
-      psa_destroy_key(key_id);
-
-
-      // HMAC
-      printf("\r\nTesting the HMAC operation:\r\n");
-
-      ret= create_hmac_hash_key(&key_id, hash_key, sizeof(hash_key), &hash_key_size);
-      if (ret == PSA_SUCCESS){
-      // Sign message.
-          ret = calculate_hmac_message((uint8_t*)buffer,(size_t)index,key_id, mac, sizeof(mac), &mac_size);
-      }
-
-      if(ret == PSA_SUCCESS){
-
-      // Verify the message
-          ret = message_hmac_authenticate(key_id, buffer, index, mac, mac_size);
-
-      }
-
-
-
-      if(ret == PSA_SUCCESS)
-        printf("\r\n\nVerification successful\n\n");
-      else
-        printf("\r\n\nVerification failed #%ld\n\n", ret);
-
-
-      if(ret == PSA_SUCCESS)
-        printf("\r\nYou wrote: %s\r\n> ", buffer);
-      psa_destroy_key(key_id);
-
+      apset_lab2a_cmac(buffer, (size_t)index);
+      if (apset_lab2a_cmac(buffer, (size_t)index) == PSA_SUCCESS)
+        apset_lab2a_hmac(buffer, (size_t) index);
+      printf("\r\n> ");
       index = 0;
     } else {
       if (index < BUFSIZE - 1) {

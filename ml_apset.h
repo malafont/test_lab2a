@@ -36,4 +36,8 @@ psa_status_t message_cmac_authenticate(psa_key_id_t key_id, uint8_t* message, si
 psa_status_t message_hmac_authenticate(psa_key_id_t key_id, uint8_t* message, size_t message_size, uint8_t *mac, size_t mac_size);
 
 
+psa_status_t apset_lab2a_cmac(char* message, size_t message_size);
+psa_status_t apset_lab2a_hmac(char* message, size_t message_size);
+
+
 #endif /* ML_APSET_H_ */

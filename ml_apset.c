@@ -12,6 +12,22 @@
 #include "psa/crypto.h"
 
 #define COLUMN_PRINT 16
+#define KEY_BYTE_MAX 256/8  /* 256 bits. */
+#define HASH_KEY_SIZE_MAX 32 /* Maximum size of hash key in bytes.*/
+#define MAC_SIZE_MAX 32   /* Maximum size of the MAC. */
+
+/************************************
+ *  Global variable
+ */
+static uint8_t key[KEY_BYTE_MAX];
+static psa_key_attributes_t key_attr;
+static uint8_t hash_key[HASH_KEY_SIZE_MAX];
+static size_t hash_key_size;
+static uint8_t mac[MAC_SIZE_MAX];
+static size_t mac_size;
+static psa_key_id_t key_id;
+
+
 
 psa_status_t message_mac_authenticate(psa_key_id_t key_id, psa_algorithm_t alg, uint8_t* message, size_t message_size, uint8_t *mac, size_t mac_size);
 int char_occurance_count(const char* str, const char ch);
@@ -163,58 +179,66 @@ psa_status_t create_random_key(uint8_t *buffer, size_t buffer_length, const int 
   return ret;
 }
 
-psa_status_t set_up_attributes(psa_key_id_t *key_id,
-                               psa_key_attributes_t *attr,
-                               psa_key_type_t type,
-                               size_t number_bits,
-                               psa_key_usage_t flags,
-                               psa_algorithm_t alg,
-                               int location
-                               )
-{
-  *attr = psa_key_attributes_init();
 
-  psa_key_lifetime_t lifetime;
-
-  psa_set_key_type(attr, type);
-  psa_set_key_bits(attr, number_bits);
-  psa_set_key_usage_flags(attr, PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_VERIFY_HASH|PSA_KEY_USAGE_VERIFY_MESSAGE|PSA_KEY_USAGE_SIGN_MESSAGE);
-  psa_set_key_algorithm(attr, PSA_ALG_CMAC);
-  if (key_id == 0){
-      lifetime =  PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(PSA_KEY_PERSISTENCE_VOLATILE, location);
-  }
-  else {
-      lifetime = PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(PSA_KEY_PERSISTENCE_DEFAULT, location);
-
-  }
-  psa_set_key_lifetime(attr, lifetime);
-
-
-}
+/****
+ *
+ * @param key_id
+ * @param attr
+ * @param type
+ * @param number_bits
+ * @param flags
+ * @param alg
+ * @param location  0x0 - Local 0x01 for secure location
+ * @return
+ */
+//psa_status_t set_up_attributes(psa_key_id_t *key_id,
+//                               psa_key_attributes_t *attr,
+//                               psa_key_type_t type,
+//                               size_t number_bits,
+//                               psa_key_usage_t flags,
+//                               psa_algorithm_t alg,
+//                               int location
+//                               )
+//{
+//  *attr = psa_key_attributes_init();
+//
+//  psa_key_lifetime_t lifetime;
+//
+//  psa_set_key_type(attr, type);
+//  psa_set_key_bits(attr, number_bits);
+//  psa_set_key_usage_flags(attr, flags);
+//  psa_set_key_algorithm(attr, alg);
+//  if (key_id == 0){
+//      lifetime =  PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(PSA_KEY_PERSISTENCE_VOLATILE, location);
+//  }
+//  else {
+//      lifetime = PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(PSA_KEY_PERSISTENCE_DEFAULT, location);
+//
+//  }
+//  psa_set_key_lifetime(attr, lifetime);
+//
+//  return 0;
+//}
 
 
 psa_status_t create_cmac_hash_key(psa_key_id_t *key_id, uint8_t* hash_key, size_t hash_key_size, size_t* hash_key_lenght)
 {
-  uint8_t key[256/8];
-  psa_key_attributes_t key_attr;
+
   psa_status_t ret;
 
-  printf("\r\n\n Creating CMAC Hash Key:\n");
   ret = psa_crypto_init();
   ret = psa_generate_random(key, sizeof(key));  // Generate a random key AES-256
-  printf("\r\nRandom key: ");
+  printf("\r\nRandom CMAC key: ");
   print_key_hex(key, sizeof(key));
 
-  //print_buffer(key, sizeof(key));
   /* Hash the key */
   ret = psa_hash_compute(PSA_ALG_SHA_256, key, sizeof(key), hash_key, hash_key_size, hash_key_lenght);
-  printf("\r\n\nHashing key (%d): ", *hash_key_lenght);
+  printf("\r\nHashing CMAC key (%d): ", *hash_key_lenght);
   print_key_hex(hash_key, *hash_key_lenght);
 
 
-  /* Create CMAC key. */
+  /* Create attributes  CMAC key. */
   key_attr = psa_key_attributes_init();
-
   psa_set_key_type(&key_attr, PSA_KEY_TYPE_AES);
   psa_set_key_bits(&key_attr, *hash_key_lenght * 8);
   psa_set_key_usage_flags(&key_attr, PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_VERIFY_HASH|PSA_KEY_USAGE_VERIFY_MESSAGE|PSA_KEY_USAGE_SIGN_MESSAGE);
@@ -222,26 +246,29 @@ psa_status_t create_cmac_hash_key(psa_key_id_t *key_id, uint8_t* hash_key, size_
 
 
   // Generate a random key.
-  ret = psa_generate_key(&key_attr, key_id);
-  printf("\r\n\nKey Attributes:\n");
+//  ret = psa_generate_key(&key_attr, key_id);
+//  printf("\r\nGenerate key #%d",*key_id);
+//  printf("\r\nKey Attributes: ");
+//  print_key_attributes(&key_attr);
+
   if(ret == PSA_SUCCESS){
-  // Import a volatile plain key
+      // Import a volatile plain key
       ret = psa_import_key(&key_attr, hash_key, hash_key_size, key_id);
+      printf("\r\nGenerate key #%ld",*key_id);
+      printf("\r\nKey Attributes: ");
+      print_key_attributes(&key_attr);
+
   }
-  print_key_attributes(&key_attr);
   return ret;
 }
 
 psa_status_t create_hmac_hash_key(psa_key_id_t *key_id, uint8_t* hash_key, size_t hash_key_size, size_t* hash_key_lenght)
 {
-  uint8_t key[256/8];
-  psa_key_attributes_t key_attr;
   psa_status_t ret;
 
-  printf("\r\n\n Creating HMAC Hash Key:\n");
   ret = psa_crypto_init();
   ret = psa_generate_random(key, sizeof(key));  // Generate a random key AES-256
-  printf("\r\nRandom key: ");
+  printf("\r\nRandom HMAC key: ");
   print_key_hex(key, sizeof(key));
 
   //print_buffer(key, sizeof(key));
@@ -249,28 +276,25 @@ psa_status_t create_hmac_hash_key(psa_key_id_t *key_id, uint8_t* hash_key, size_
 
   /* Hash the key */
   ret = psa_hash_compute(PSA_ALG_SHA_256, key, sizeof(key), hash_key, hash_key_size, hash_key_lenght);
-  printf("\r\n\nHashing key (%d): ", *hash_key_lenght);
+  printf("\r\nHashing HMAC key (%d): ", *hash_key_lenght);
   print_key_hex(hash_key, *hash_key_lenght);
 
 
 
-  /* Create CMAC key. */
+  /* Create attribues for HMAC key. */
   key_attr = psa_key_attributes_init();
-
   psa_set_key_type(&key_attr, PSA_KEY_TYPE_HMAC);
   psa_set_key_bits(&key_attr, *hash_key_lenght * 8);
   psa_set_key_usage_flags(&key_attr, PSA_KEY_USAGE_SIGN_HASH | PSA_KEY_USAGE_VERIFY_HASH|PSA_KEY_USAGE_VERIFY_MESSAGE|PSA_KEY_USAGE_SIGN_MESSAGE);
   psa_set_key_algorithm(&key_attr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
 
 
-  // Generate a random key.
-  ret = psa_generate_key(&key_attr, key_id);
   if(ret == PSA_SUCCESS){
-  // Import a volatile plain key
       ret = psa_import_key(&key_attr, hash_key, hash_key_size, key_id);
+      printf("\r\nGenerate key #%ld",*key_id);
+      printf("\r\nKey Attributes: ");
+      print_key_attributes(&key_attr);
   }
-  printf("\r\n\nKey Attributes:\n");
-  print_key_attributes(&key_attr);
   return ret;
 }
 
@@ -297,20 +321,17 @@ psa_status_t calculate_mac_message(uint8_t* message_buffer,
     psa_mac_abort(&mac_op);
   print_key_hex(mac_buffer, *mac_length);
   return ret;
-
-
-
 }
 
 
 psa_status_t cmac_sign_message(uint8_t* message_buffer, size_t message_buffer_size, psa_key_id_t key_id, uint8_t* mac_buffer, size_t mac_buffer_size, size_t* mac_length)
 {
-  printf("\r\n\nMAC for CMAC: ");
+  printf("\r\nMAC for CMAC: ");
   return calculate_mac_message(message_buffer, message_buffer_size, key_id, PSA_ALG_CMAC, mac_buffer, mac_buffer_size, mac_length);
 }
 
 psa_status_t calculate_hmac_message(uint8_t* message_buffer, size_t message_buffer_size, psa_key_id_t key_id, uint8_t* mac_buffer, size_t mac_buffer_size, size_t* mac_length){
-  printf("\r\n\nMAC for HMAC: ");
+  printf("\r\nMAC for HMAC: ");
   return calculate_mac_message(message_buffer, message_buffer_size, key_id, PSA_ALG_HMAC(PSA_ALG_SHA_256), mac_buffer, mac_buffer_size, mac_length);
 }
 
@@ -339,5 +360,72 @@ psa_status_t message_cmac_authenticate(psa_key_id_t key_id, uint8_t* message, si
 psa_status_t message_hmac_authenticate(psa_key_id_t key_id, uint8_t* message, size_t message_size, uint8_t *mac, size_t mac_size)
 {
   return message_mac_authenticate(key_id,PSA_ALG_HMAC(PSA_ALG_SHA_256), message, message_size, mac, mac_size);
+}
+
+psa_status_t apset_lab2a_cmac(char* message, size_t message_size)
+{
+  psa_status_t ret;
+
+  //Initialise cmac key.
+  printf("\r\n\nTesting the CMAC operation:");
+  ret= create_cmac_hash_key(&key_id, hash_key, sizeof(hash_key), &hash_key_size);
+  if (ret == PSA_SUCCESS){
+  // Sign message.
+      ret = cmac_sign_message((uint8_t*)message, message_size, key_id, mac, sizeof(mac), &mac_size);
+
+  }
+
+  // In real life message is ready to TX.
+
+  if(ret == PSA_SUCCESS){
+
+  // Verify the message
+      ret = message_cmac_authenticate(key_id, (uint8_t*)message, message_size, mac, mac_size);
+  }
+  if(ret == PSA_SUCCESS)
+    printf("\r\nMessage signature verification successful");
+  else
+    printf("\r\nMessage signature verification failed #%ld", ret);
+
+
+  if(ret == PSA_SUCCESS)
+    printf("\r\nYou wrote:\r\n%s ", message);
+  psa_destroy_key(key_id);
+  psa_reset_key_attributes(&key_attr);
+  return ret;
+
+}
+
+
+psa_status_t apset_lab2a_hmac(char* message, size_t message_size)
+{
+  psa_status_t ret;
+
+  // HMAC
+  printf("\r\n\nTesting the HMAC operation:");
+
+  ret= create_hmac_hash_key(&key_id, hash_key, sizeof(hash_key), &hash_key_size);
+  if (ret == PSA_SUCCESS){
+  // Sign message.
+      ret = calculate_hmac_message((uint8_t*)message,message_size,key_id, mac, sizeof(mac), &mac_size);
+  }
+
+  if(ret == PSA_SUCCESS){
+
+  // Verify the message
+      ret = message_hmac_authenticate(key_id, (uint8_t*)message, message_size, mac, mac_size);
+
+  }
+
+  if(ret == PSA_SUCCESS){
+      printf("\r\nMessage signature verification successful");
+      printf("\r\nYou wrote:\r\n%s ", message);
+
+  }
+  else
+    printf("\r\nMessage signature verification failed #%ld", ret);
+  psa_destroy_key(key_id);
+  psa_reset_key_attributes(&key_attr);
+  return ret;
 }
 
